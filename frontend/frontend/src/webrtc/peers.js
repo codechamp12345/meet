@@ -148,6 +148,10 @@ export const handleIceCandidate = async (senderSocketId, candidate) => {
 export const closePeerConnection = (socketId) => {
     const pc = peerConnections.get(socketId);
     if (pc) {
+        // CRITICAL: Remove listeners to prevent "closed" state event from re-adding participant
+        pc.onconnectionstatechange = null;
+        pc.onicecandidate = null;
+        pc.ontrack = null;
         pc.close();
         peerConnections.delete(socketId);
     }

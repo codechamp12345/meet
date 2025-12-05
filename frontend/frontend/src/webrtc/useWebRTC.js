@@ -62,7 +62,12 @@ const useWebRTC = (roomId, userName, odId) => {
     }, []);
 
     const removeParticipant = useCallback((socketId) => {
-        setParticipants(prev => { const m = new Map(prev); m.delete(socketId); return m; });
+        console.log('[WEBRTC] Removing participant:', socketId);
+        setParticipants(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(socketId);
+            return newMap;
+        });
         closePeerConnection(socketId);
     }, []);
 
@@ -71,6 +76,12 @@ const useWebRTC = (roomId, userName, odId) => {
     }, [addParticipant]);
 
     const handleConnectionStateChange = useCallback((socketId, state) => {
+        if (state === 'closed' || state === 'failed' || state === 'disconnected') {
+            console.log('[WEBRTC] Connection closed/failed for:', socketId);
+            // Don't re-add, maybe even ensure removal? 
+            // relying on user-left or explict removal is better, but definitly don't add.
+            return;
+        }
         addParticipant(socketId, { connectionState: state });
     }, [addParticipant]);
 

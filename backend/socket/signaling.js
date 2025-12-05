@@ -237,6 +237,7 @@ function initializeSignaling(io) {
                 roomHosts.delete(roomId);
             }
 
+            console.log(`👋 ${u.userName} left room ${roomId}`);
             socket.to(roomId).emit('user-left', {
                 socketId: socket.id,
                 odId: u.odId,
