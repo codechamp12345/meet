@@ -48,10 +48,17 @@ const VideoTile = ({
             const interval = setInterval(checkVideo, 500);
             setTimeout(() => clearInterval(interval), 3000);
 
+            // Ensure video plays
+            video.onloadedmetadata = () => {
+                video.play().catch(e => console.log('Play error:', e));
+                checkVideo();
+            };
+
             return () => {
                 clearInterval(interval);
                 stream.onaddtrack = null;
                 stream.onremovetrack = null;
+                video.onloadedmetadata = null;
             };
         } else {
             video.srcObject = null;
@@ -71,7 +78,7 @@ const VideoTile = ({
                 autoPlay
                 playsInline
                 muted={isLocal || isMuted}
-                className={`w-full h-full object-cover ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : ''}`}
+                className={`w-full h-full ${isScreenSharing ? 'object-contain bg-black' : 'object-cover'} ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : ''}`}
             />
 
             {/* showde Avatar when no video */}

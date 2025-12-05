@@ -31,13 +31,17 @@ const useWebRTC = (roomId, userName, odId) => {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: {
-                    echoCancellation: { ideal: true },
-                    noiseSuppression: { ideal: true },
-                    autoGainControl: { ideal: true },
-                    sampleRate: { ideal: 48000 },
-                    channelCount: { ideal: 1 },
-                    latency: { ideal: 0.01 },
-                    suppressLocalAudioPlayback: true,
+                    echoCancellation: true, // Standard
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    googEchoCancellation: true, // Chrome-specific
+                    googAutoGainControl: true,
+                    googNoiseSuppression: true,
+                    googHighpassFilter: true,
+                    sampleRate: 48000,
+                    channelCount: 1,
+                    latency: 0.01,
+                    suppressLocalAudioPlayback: true, // Prevents local loopback
                 },
             });
             localStreamRef.current = stream;
@@ -63,12 +67,15 @@ const useWebRTC = (roomId, userName, odId) => {
 
     const removeParticipant = useCallback((socketId) => {
         console.log('[WEBRTC] Removing participant:', socketId);
+        // Explicitly close connection first to stop events
+        closePeerConnection(socketId);
+
         setParticipants(prev => {
+            if (!prev.has(socketId)) return prev; // already removed
             const newMap = new Map(prev);
             newMap.delete(socketId);
             return newMap;
         });
-        closePeerConnection(socketId);
     }, []);
 
     const handleRemoteStream = useCallback((socketId, stream) => {
@@ -77,13 +84,17 @@ const useWebRTC = (roomId, userName, odId) => {
 
     const handleConnectionStateChange = useCallback((socketId, state) => {
         if (state === 'closed' || state === 'failed' || state === 'disconnected') {
-            console.log('[WEBRTC] Connection closed/failed for:', socketId);
-            // Don't re-add, maybe even ensure removal? 
-            // relying on user-left or explict removal is better, but definitly don't add.
+            // Ensure removal just in case
+            removeParticipant(socketId);
             return;
         }
-        addParticipant(socketId, { connectionState: state });
-    }, [addParticipant]);
+
+        // Only update if participant exists to avoid ghosting
+        setParticipants(prev => {
+            if (!prev.has(socketId)) return prev;
+            return new Map(prev).set(socketId, { ...prev.get(socketId), connectionState: state });
+        });
+    }, [removeParticipant]);
 
     const joinRoom = useCallback(async (isHost) => {
         if (isJoinedRef.current) return;
