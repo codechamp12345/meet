@@ -13,14 +13,13 @@ const VideoGrid = ({ localStream, participants, isVideoEnabled, isAudioEnabled, 
     };
 
     const getTileClass = () => {
-        if (totalParticipants === 1) return 'max-w-4xl max-h-[70vh] mx-auto';
-        if (totalParticipants === 2) return 'max-h-[60vh]';
-        return '';
+        // Enforce 16:9 aspect ratio and centering
+        return 'w-full h-full aspect-video mx-auto rounded-xl overflow-hidden shadow-lg border border-gray-700/50 relative';
     };
 
     return (
-        <div className="h-full w-full flex items-center justify-center">
-            <div className={`grid ${getGridClass()} gap-4 w-full h-full max-h-full p-2`}>
+        <div className="h-full w-full flex items-center justify-center p-2 md:p-4">
+            <div className={`grid ${getGridClass()} gap-4 w-full max-w-7xl content-center justify-items-center`}>
                 {/* Local Video */}
                 <div className={getTileClass()}>
                     <VideoTile

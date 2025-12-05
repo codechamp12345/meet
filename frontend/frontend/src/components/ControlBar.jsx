@@ -17,8 +17,8 @@ const ControlBar = ({
                 <button
                     onClick={onToggleAudio}
                     className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isAudioEnabled
-                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                            : 'bg-red-500 hover:bg-red-600 text-white'
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-red-500 hover:bg-red-600 text-white'
                         }`}
                     title={isAudioEnabled ? 'Mute' : 'Unmute'}
                 >
@@ -38,8 +38,8 @@ const ControlBar = ({
                 <button
                     onClick={onToggleVideo}
                     className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isVideoEnabled
-                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                            : 'bg-red-500 hover:bg-red-600 text-white'
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-red-500 hover:bg-red-600 text-white'
                         }`}
                     title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
                 >
@@ -59,8 +59,8 @@ const ControlBar = ({
                 <button
                     onClick={onToggleScreenShare}
                     className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isScreenSharing
-                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                            : 'bg-gray-700 hover:bg-gray-600 text-white'
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                        : 'bg-gray-700 hover:bg-gray-600 text-white'
                         }`}
                     title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
                 >
@@ -73,8 +73,8 @@ const ControlBar = ({
                 <button
                     onClick={onToggleChat}
                     className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isChatOpen
-                            ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                            : 'bg-gray-700 hover:bg-gray-600 text-white'
+                        ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                        : 'bg-gray-700 hover:bg-gray-600 text-white'
                         }`}
                     title="Chat"
                 >
@@ -96,13 +96,12 @@ const ControlBar = ({
                 {/* Leave Meeting */}
                 <button
                     onClick={onLeaveMeeting}
-                    className="w-12 h-12 md:w-14 md:h-14 md:px-6 bg-red-500 hover:bg-red-600 text-white rounded-full md:rounded-xl flex items-center justify-center transition-all"
+                    className="w-12 h-12 md:w-14 md:h-14 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg"
                     title="Leave meeting"
                 >
-                    <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <svg className="w-6 h-6 md:w-7 md:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    <span className="hidden md:inline ml-2 font-medium">Leave</span>
                 </button>
             </div>
         </div>

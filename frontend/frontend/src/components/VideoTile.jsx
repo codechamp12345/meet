@@ -70,16 +70,34 @@ const VideoTile = ({
     const showVideo = stream && (videoReady || isScreenSharing);
     const isConnecting = !isLocal && connectionState !== 'connected' && !stream;
 
+    // Prevent infinite loop for local screen share
+    const isLocalScreenShare = isLocal && isScreenSharing;
+
     return (
-        <div className="relative w-full h-full min-h-[200px] bg-gray-800 rounded-xl overflow-hidden">
-            {/* Video element - always render but hide when not showing */}
-            <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted={isLocal || isMuted}
-                className={`w-full h-full ${isScreenSharing ? 'object-contain bg-black' : 'object-cover'} ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : ''}`}
-            />
+        <div className="relative w-full h-full min-h-[200px] bg-gray-800 rounded-xl overflow-hidden group border border-gray-700/50">
+            {/* Video element - hide if local screen share to prevent infinite loop */}
+            {!isLocalScreenShare && (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted={isLocal || isMuted}
+                    className={`w-full h-full ${isScreenSharing ? 'object-contain bg-black' : 'object-cover'} ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : ''}`}
+                />
+            )}
+
+            {/* Local Screen Share Placeholder */}
+            {isLocalScreenShare && (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800 text-center p-4">
+                    <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-4 animate-pulse">
+                        <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-white font-semibold text-lg mb-1">You are sharing your screen</h3>
+                    <p className="text-gray-400 text-sm">Everyone in the meeting can see your screen.</p>
+                </div>
+            )}
 
             {/* showde Avatar when no video */}
             {!showVideo && (
