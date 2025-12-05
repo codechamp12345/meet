@@ -8,7 +8,9 @@ const VideoTile = ({
     isAudioEnabled = true,
     isScreenSharing = false,
     isMuted = false,
-    connectionState = 'connected'
+    connectionState = 'connected',
+    isPinned = false,
+    onPin
 }) => {
     const videoRef = useRef(null);
     const [videoReady, setVideoReady] = useState(false);
@@ -145,11 +147,30 @@ const VideoTile = ({
                 </div>
             </div>
 
-            {isLocal && (
-                <div className="absolute top-3 right-3 px-2 py-1 bg-purple-500/80 rounded-md">
-                    <span className="text-xs text-white font-medium">You</span>
-                </div>
-            )}
+            {/* Pin Button - Show on hover or if pinned */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onPin && onPin();
+                }}
+                className={`absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-900/60 hover:bg-gray-700/80 flex items-center justify-center transition-all duration-200 z-10 ${isPinned ? 'opacity-100 bg-blue-600/80 hover:bg-blue-500/90' : 'opacity-0 group-hover:opacity-100'}`}
+                title={isPinned ? "Unpin" : "Pin"}
+            >
+                {isPinned ? (
+                    /* Pinned Icon (Filled) */
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+                    </svg>
+                ) : (
+                    /* Unpinned Icon (Outline) */
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" stroke="currentColor" fill="none" />
+                        <path d="M16 9V4h1H7h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" opacity="0" />
+                        {/* Fallback to simple Path */}
+                        <path d="M5 5h14M7 5v2m10-2v2M8 7v4l-2 2v2h8v6l2 2 2-2v-6h8v-2l-2-2V7" />
+                    </svg>
+                )}
+            </button>
 
             {isConnecting && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800/80">
