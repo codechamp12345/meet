@@ -66,7 +66,7 @@ const useWebRTC = (roomId, userName, odId) => {
     }, []);
 
     const removeParticipant = useCallback((socketId) => {
-        console.log('[WEBRTC] Removing participant:', socketId);
+
         // Explicitly close connection first to stop events
         closePeerConnection(socketId);
 

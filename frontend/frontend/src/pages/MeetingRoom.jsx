@@ -45,7 +45,7 @@ const MeetingRoom = () => {
 
         const init = async () => {
             try {
-                console.log('Initializing meeting:', meetingId);
+
                 const response = await meetingAPI.validate(meetingId);
                 const meeting = response.data.meeting;
 
@@ -53,7 +53,7 @@ const MeetingRoom = () => {
                 const userId = String(user.id);
                 const userIsHost = hostId === userId;
 
-                console.log('Host check:', hostId, '===', userId, '=', userIsHost);
+
 
                 setIsHost(userIsHost);
                 setLoading(false);
@@ -87,7 +87,7 @@ const MeetingRoom = () => {
         const onChatMessage = (msg) => setMessages(prev => [...prev, msg]);
 
         const onJoinRequest = ({ odId, userName, socketId }) => {
-            console.log('*** JOIN REQUEST from:', userName, 'socket:', socketId);
+
             setJoinRequests(prev => {
                 if (prev.some(r => r.socketId === socketId)) return prev;
                 return [...prev, { odId, userName, socketId }];
@@ -113,14 +113,14 @@ const MeetingRoom = () => {
     }, [connectionError, addToast]);
 
     const handleApprove = (socketId, userName) => {
-        console.log('Approving:', userName, socketId);
+
         socket.emit('approve-join', { targetSocketId: socketId, roomId: meetingId });
         setJoinRequests(prev => prev.filter(r => r.socketId !== socketId));
         addToast(`${userName} admitted`, 'success');
     };
 
     const handleReject = (socketId, userName) => {
-        console.log('Rejecting:', userName, socketId);
+
         socket.emit('reject-join', { targetSocketId: socketId, roomId: meetingId });
         setJoinRequests(prev => prev.filter(r => r.socketId !== socketId));
     };

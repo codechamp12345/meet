@@ -18,7 +18,7 @@ const VideoTile = ({
         if (!video) return;
 
         if (stream) {
-            console.log(`[VideoTile] Setting stream for ${userName}, local: ${isLocal}`);
+
             video.srcObject = stream;
 
             // CRITICAL: Always mute LOCAL audio to prevent feedback loop
@@ -50,7 +50,7 @@ const VideoTile = ({
 
             // Ensure video plays
             video.onloadedmetadata = () => {
-                video.play().catch(e => console.log('Play error:', e));
+                video.play().catch(() => { });
                 checkVideo();
             };
 

@@ -27,12 +27,12 @@ export const disconnectSocket = () => {
 };
 
 socket.on('connect', () => {
-    console.log('✅ Socket connected:', socket.id);
+
     isConnected = true;
 });
 
 socket.on('disconnect', (reason) => {
-    console.log('❌ Socket disconnected:', reason);
+
     isConnected = false;
 });
 

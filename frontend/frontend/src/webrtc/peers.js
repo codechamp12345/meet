@@ -184,7 +184,7 @@ export const replaceTrackInAllPeers = async (newTrack, kind) => {
         if (sender) {
             promises.push(
                 sender.replaceTrack(newTrack)
-                    .then(() => console.log(`Track replaced for ${peerId}`))
+
                     .catch(err => console.error(`Track replace failed for ${peerId}:`, err))
             );
         } else {
@@ -193,7 +193,7 @@ export const replaceTrackInAllPeers = async (newTrack, kind) => {
             if (emptySender) {
                 promises.push(
                     emptySender.replaceTrack(newTrack)
-                        .then(() => console.log(`Track added for ${peerId}`))
+
                         .catch(err => console.error(`Track add failed for ${peerId}:`, err))
                 );
             }
