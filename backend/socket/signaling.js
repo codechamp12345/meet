@@ -103,7 +103,13 @@ function initializeSignaling(io) {
                 const participants = [];
                 rooms.get(roomId).forEach((p, pId) => {
                     if (pId !== targetSocketId) {
-                        participants.push({ socketId: p.socketId, odId: p.odId, userName: p.userName, isHost: p.isHost });
+                        participants.push({
+                            socketId: p.socketId,
+                            odId: p.odId,
+                            userName: p.userName,
+                            isHost: p.isHost,
+                            isScreenSharing: p.isScreenSharing // Include screen share status
+                        });
                     }
                 });
 
@@ -178,6 +184,10 @@ function initializeSignaling(io) {
         socket.on('screen-share-started', ({ roomId }) => {
             const u = socketToUser.get(socket.id);
             if (u) {
+                // Update room state
+                if (rooms.has(roomId) && rooms.get(roomId).has(socket.id)) {
+                    rooms.get(roomId).get(socket.id).isScreenSharing = true;
+                }
                 socket.to(roomId).emit('user-screen-sharing', { socketId: socket.id, userName: u.userName, isSharing: true });
             }
         });
@@ -185,6 +195,10 @@ function initializeSignaling(io) {
         socket.on('screen-share-stopped', ({ roomId }) => {
             const u = socketToUser.get(socket.id);
             if (u) {
+                // Update room state
+                if (rooms.has(roomId) && rooms.get(roomId).has(socket.id)) {
+                    rooms.get(roomId).get(socket.id).isScreenSharing = false;
+                }
                 socket.to(roomId).emit('user-screen-sharing', { socketId: socket.id, isSharing: false });
             }
         });

@@ -15,15 +15,15 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.io setup with CORS for frontend
+// Allowing * for development access from local network devices
 const io = new Server(server, {
   cors: {
-    origin: "*", // Use wildcard for testing, or set specific IP
+    origin: "*",
     methods: ["GET", "POST"],
   }
 });
 
-
-app.use(cors()); // Default allows *
+app.use(cors());
 app.use(express.json());
 
 // Health check
@@ -68,3 +68,5 @@ process.on("unhandledRejection", (err) => {
   console.error("Unhandled Rejection:", err.message);
   server.close(() => process.exit(1));
 });
+
+// Force Restart Triggered

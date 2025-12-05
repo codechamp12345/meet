@@ -14,6 +14,7 @@ const VideoTile = ({
 }) => {
     const videoRef = useRef(null);
     const [videoReady, setVideoReady] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -68,6 +69,28 @@ const VideoTile = ({
         }
     }, [stream, isLocal, userName]);
 
+    // Handle Fullscreen
+    const toggleFullScreen = (e) => {
+        e.stopPropagation();
+        const container = videoRef.current?.parentElement;
+        if (!container) return;
+
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => { });
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
+        }
+    };
+
+    // Listen to fullscreen change to update state if exited via ESC
+    useEffect(() => {
+        const handleFSChange = () => {
+            if (!document.fullscreenElement) setIsFullscreen(false);
+        };
+        document.addEventListener('fullscreenchange', handleFSChange);
+        return () => document.removeEventListener('fullscreenchange', handleFSChange);
+    }, []);
+
     // Show video if: we have stream
     const showVideo = stream && (videoReady || isScreenSharing);
     const isConnecting = !isLocal && connectionState !== 'connected' && !stream;
@@ -76,7 +99,10 @@ const VideoTile = ({
     const isLocalScreenShare = isLocal && isScreenSharing;
 
     return (
-        <div className="relative w-full h-full min-h-[200px] bg-gray-800 rounded-xl overflow-hidden group border border-gray-700/50">
+        <div
+            className={`relative w-full h-full min-h-[200px] bg-gray-800 overflow-hidden group border border-gray-700/50 ${isFullscreen ? 'rounded-none border-0' : 'rounded-xl'}`}
+            style={isFullscreen ? { aspectRatio: 'auto' } : undefined}
+        >
             {/* Video element - hide if local screen share to prevent infinite loop */}
             {!isLocalScreenShare && (
                 <video
@@ -84,7 +110,10 @@ const VideoTile = ({
                     autoPlay
                     playsInline
                     muted={isLocal || isMuted}
-                    className={`w-full h-full ${isScreenSharing ? 'object-contain bg-black' : 'object-cover'} ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : ''}`}
+                    // optimize video rendering with transform to prevent vibration, ensure contain for screen share
+                    // Use !object-contain to enforce containment on screen shares
+                    className={`w-full h-full ${isScreenSharing ? '!object-contain bg-black' : 'object-cover'} ${!showVideo ? 'hidden' : ''} ${isLocal && !isScreenSharing ? 'transform -scale-x-100' : 'transform translate-z-0'}`}
+                    style={{ transform: isLocal && !isScreenSharing ? 'scaleX(-1)' : 'translateZ(0)', backfaceVisibility: 'hidden' }}
                 />
             )}
 
@@ -113,7 +142,7 @@ const VideoTile = ({
             )}
 
             {isScreenSharing && (
-                <div className="absolute top-3 left-3 px-2 py-1 bg-blue-500/80 rounded-md flex items-center space-x-1">
+                <div className="absolute top-3 left-3 px-2 py-1 bg-blue-500/80 rounded-md flex items-center space-x-1 z-10">
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
@@ -121,7 +150,7 @@ const VideoTile = ({
                 </div>
             )}
 
-            <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black/80 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black/80 to-transparent z-10">
                 <div className="flex items-center justify-between">
                     <span className="text-white text-sm font-medium truncate max-w-[150px]">
                         {userName} {isLocal && '(You)'}
@@ -147,33 +176,54 @@ const VideoTile = ({
                 </div>
             </div>
 
-            {/* Pin Button - Show on hover or if pinned */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onPin && onPin();
-                }}
-                className={`absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-900/60 hover:bg-gray-700/80 flex items-center justify-center transition-all duration-200 z-10 ${isPinned ? 'opacity-100 bg-blue-600/80 hover:bg-blue-500/90' : 'opacity-0 group-hover:opacity-100'}`}
-                title={isPinned ? "Unpin" : "Pin"}
-            >
-                {isPinned ? (
-                    /* Pinned Icon (Filled) */
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
-                    </svg>
-                ) : (
-                    /* Unpinned Icon (Outline) */
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" stroke="currentColor" fill="none" />
-                        <path d="M16 9V4h1H7h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" opacity="0" />
-                        {/* Fallback to simple Path */}
-                        <path d="M5 5h14M7 5v2m10-2v2M8 7v4l-2 2v2h8v6l2 2 2-2v-6h8v-2l-2-2V7" />
-                    </svg>
-                )}
-            </button>
+            {/* Controls: Fullscreen & Pin */}
+            <div className={`absolute top-3 right-3 flex items-center space-x-2 z-20 transition-opacity duration-200 ${isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {/* Fullscreen Button */}
+                <button
+                    onClick={toggleFullScreen}
+                    className="w-8 h-8 rounded-full bg-gray-900/60 hover:bg-gray-700/80 flex items-center justify-center transition-all duration-200 text-white"
+                    title={isFullscreen ? "Minimize" : "Full Screen"}
+                >
+                    {isFullscreen ? (
+                        /* Minimize Icon */
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 14h6m0 0v6m0-6L4 20m16-6h-6m0 0v6m0-6l6 6M10 4v6m0 0H4m6 0L4 4m10 0v6m0 0h6m-6 0l6-6" />
+                        </svg>
+                    ) : (
+                        /* Maximize Icon */
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                    )}
+                </button>
+
+                {/* Pin Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onPin && onPin();
+                    }}
+                    className={`w-8 h-8 rounded-full bg-gray-900/60 hover:bg-gray-700/80 flex items-center justify-center transition-all duration-200 ${isPinned ? 'bg-blue-600/80 hover:bg-blue-500/90 text-white' : 'text-white'}`}
+                    title={isPinned ? "Unpin" : "Pin"}
+                >
+                    {isPinned ? (
+                        /* Pinned Icon (Filled) */
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+                        </svg>
+                    ) : (
+                        /* Unpinned Icon (Outline) */
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" stroke="currentColor" fill="none" />
+                            <path d="M16 9V4h1H7h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" opacity="0" />
+                            <path d="M5 5h14M7 5v2m10-2v2M8 7v4l-2 2v2h8v6l2 2 2-2v-6h8v-2l-2-2V7" />
+                        </svg>
+                    )}
+                </button>
+            </div>
 
             {isConnecting && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-800/80">
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800/80 z-30">
                     <div className="text-center">
                         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                         <p className="text-gray-400 text-sm">Connecting...</p>
