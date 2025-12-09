@@ -101,28 +101,28 @@ const VerifyOTP = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-white px-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 mb-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-600 mb-4">
                         <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h1 className="text-3xl font-bold text-white">Verify Your Email</h1>
-                    <p className="text-gray-400 mt-2">We sent a 6-digit code to</p>
-                    <p className="text-purple-400 font-medium">{email}</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Verify Your Email</h1>
+                    <p className="text-gray-600 mt-2">We sent a 6-digit code to</p>
+                    <p className="text-purple-600 font-medium">{email}</p>
                 </div>
 
-                <div className="bg-gray-800/50 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-700/50 p-8">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
                     {error && (
-                        <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/50 text-red-400 text-sm text-center">
+                        <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center">
                             {error}
                         </div>
                     )}
 
                     {success && (
-                        <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/50 text-green-400 text-sm text-center">
+                        <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm text-center">
                             {success}
                         </div>
                     )}
@@ -140,7 +140,7 @@ const VerifyOTP = () => {
                                     onChange={(e) => handleChange(index, e.target.value.replace(/\D/g, ''))}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
-                                    className="w-12 h-14 text-center text-2xl font-bold bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                    className="w-12 h-14 text-center text-2xl font-bold bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                 />
                             ))}
                         </div>
@@ -148,20 +148,20 @@ const VerifyOTP = () => {
                         <button
                             type="submit"
                             disabled={loading || otp.join('').length !== 6}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Verifying...' : 'Verify Email'}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-gray-600 text-sm">
                             Didn't receive the code?{' '}
                             {canResend ? (
                                 <button
                                     onClick={handleResend}
                                     disabled={loading}
-                                    className="text-purple-400 hover:text-purple-300 font-medium"
+                                    className="text-purple-600 hover:text-purple-700 font-medium"
                                 >
                                     Resend
                                 </button>
