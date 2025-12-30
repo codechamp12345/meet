@@ -19,6 +19,7 @@ const useWebRTC = (roomId, userName, odId) => {
     const [wasRejected, setWasRejected] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [permissions, setPermissions] = useState({ mic: true, camera: true, screen: true });
+    const [chatHistory, setChatHistory] = useState([]);
 
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
@@ -68,9 +69,7 @@ const useWebRTC = (roomId, userName, odId) => {
     }, []);
 
     const removeParticipant = useCallback((socketId) => {
-
         closePeerConnection(socketId);
-
         setParticipants(prev => {
             if (!prev.has(socketId)) return prev;
             const newMap = new Map(prev);
@@ -85,11 +84,9 @@ const useWebRTC = (roomId, userName, odId) => {
 
     const handleConnectionStateChange = useCallback((socketId, state) => {
         if (state === 'closed' || state === 'failed' || state === 'disconnected') {
-
             removeParticipant(socketId);
             return;
         }
-
         setParticipants(prev => {
             if (!prev.has(socketId)) return prev;
             return new Map(prev).set(socketId, { ...prev.get(socketId), connectionState: state });
@@ -225,16 +222,18 @@ const useWebRTC = (roomId, userName, odId) => {
     }, [roomId]);
 
     useEffect(() => {
-        socket.on('room-joined', ({ permissions: initialPermissions }) => {
+        socket.on('room-joined', ({ permissions: initialPermissions, messages }) => {
             setIsConnected(true);
             if (initialPermissions) setPermissions(initialPermissions);
+            if (messages) setChatHistory(messages);
         });
         socket.on('waiting-for-approval', () => setWaitingForApproval(true));
 
-        socket.on('join-approved', ({ participants: existing, permissions: initialPermissions }) => {
+        socket.on('join-approved', ({ participants: existing, permissions: initialPermissions, messages }) => {
             setWaitingForApproval(false);
             setIsConnected(true);
             if (initialPermissions) setPermissions(initialPermissions);
+            if (messages) setChatHistory(messages);
 
             existing?.forEach((p, i) => {
                 addParticipant(p.socketId, { ...p, connectionState: 'connecting', isVideoEnabled: true, isAudioEnabled: true });
@@ -271,13 +270,12 @@ const useWebRTC = (roomId, userName, odId) => {
             ].forEach(e => socket.off(e));
         };
     }, [addParticipant, removeParticipant]);
-
     return {
         localStream: isScreenSharing ? screenStream : localStream,
         screenStream, participants, isAudioEnabled, isVideoEnabled, isScreenSharing,
         isConnected, connectionError, waitingForApproval, wasRejected, rejectionReason,
         joinRoom, leaveRoom, toggleAudio, toggleVideo, startScreenShare, stopScreenShare,
-        permissions, updatePermissions
+        permissions, updatePermissions, chatHistory
     };
 };
 

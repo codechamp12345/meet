@@ -29,6 +29,7 @@ function initializeSignaling(io) {
                 const roomUsers = new Map();
                 // Default permissions
                 roomUsers.permissions = { mic: true, camera: true, screen: true };
+                roomUsers.messages = []; // Chat history
                 rooms.set(roomId, roomUsers);
             }
             const room = rooms.get(roomId);
@@ -36,7 +37,7 @@ function initializeSignaling(io) {
             socketToUser.set(socket.id, { roomId, odId, userName, isHost: true });
             roomHosts.set(roomId, socket.id);
 
-            socket.emit('room-joined', { isHost: true, participants: [], permissions: room.permissions });
+            socket.emit('room-joined', { isHost: true, participants: [], permissions: room.permissions, messages: room.messages });
         });
 
         // GUEST requests to join
@@ -117,7 +118,12 @@ function initializeSignaling(io) {
                     }
                 });
 
-                io.to(targetSocketId).emit('join-approved', { roomId, participants, permissions: rooms.get(roomId).permissions });
+                io.to(targetSocketId).emit('join-approved', {
+                    roomId,
+                    participants,
+                    permissions: rooms.get(roomId).permissions,
+                    messages: rooms.get(roomId).messages // Send history
+                });
 
                 targetSocket.to(roomId).emit('user-joined', {
                     socketId: targetSocketId,
@@ -165,14 +171,35 @@ function initializeSignaling(io) {
         });
 
         // Chat
+        // Chat
         socket.on('chat-message', ({ roomId, message, sender, timestamp }) => {
-            io.to(roomId).emit('chat-message', {
+            if (!message || typeof message !== 'string' || !message.trim()) return;
+            if (message.length > 500) return; // Max length
+
+            // Basic rate limiting (could be enhanced)
+            const lastMsgTime = socketToUser.get(socket.id)?.lastMsgTime || 0;
+            if (Date.now() - lastMsgTime < 500) return; // 500ms debounce
+
+            const userInfo = socketToUser.get(socket.id);
+            if (userInfo) userInfo.lastMsgTime = Date.now();
+
+            const msgData = {
                 id: socket.id + '-' + Date.now(),
-                message,
+                message: message.trim(),
                 sender,
                 senderId: socket.id,
                 timestamp: timestamp || new Date().toISOString()
-            });
+            };
+
+            // Store in history
+            if (rooms.has(roomId)) {
+                const room = rooms.get(roomId);
+                if (!room.messages) room.messages = [];
+                room.messages.push(msgData);
+                if (room.messages.length > 50) room.messages.shift(); // Keep last 50
+            }
+
+            io.to(roomId).emit('chat-message', msgData);
         });
 
         // Media state

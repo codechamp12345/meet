@@ -21,6 +21,7 @@ const MeetingRoom = () => {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [showParticipants, setShowParticipants] = useState(false);
     const [messages, setMessages] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0); // Restored
     const [toasts, setToasts] = useState([]);
     const [joinRequests, setJoinRequests] = useState([]);
 
@@ -30,8 +31,15 @@ const MeetingRoom = () => {
         localStream, participants, isAudioEnabled, isVideoEnabled, isScreenSharing,
         isConnected, connectionError, waitingForApproval, wasRejected, rejectionReason,
         joinRoom, leaveRoom, toggleAudio, toggleVideo, startScreenShare, stopScreenShare,
-        permissions, updatePermissions
+        permissions, updatePermissions, chatHistory
     } = useWebRTC(meetingId, user?.name, user?.id);
+
+    // Sync chat history
+    useEffect(() => {
+        if (chatHistory && chatHistory.length > 0) {
+            setMessages(chatHistory);
+        }
+    }, [chatHistory]);
 
     const addToast = useCallback((message, type = 'info') => {
         const id = Date.now();
@@ -46,7 +54,6 @@ const MeetingRoom = () => {
 
         const init = async () => {
             try {
-
                 const response = await meetingAPI.validate(meetingId);
                 const meeting = response.data.meeting;
 
@@ -56,8 +63,6 @@ const MeetingRoom = () => {
 
                 setIsHost(userIsHost);
                 setLoading(false);
-
-
 
                 // Wait for socket
                 setTimeout(() => {
@@ -76,16 +81,28 @@ const MeetingRoom = () => {
         return () => {
             leaveRoom();
         };
-    }, [meetingId, user?.id]);
+    }, [meetingId, user?.id, joinRoom, leaveRoom]);
 
+
+    // Track chat open state for notifications
+    const isChatOpenRef = useRef(isChatOpen);
+    useEffect(() => { isChatOpenRef.current = isChatOpen; }, [isChatOpen]);
 
     useEffect(() => {
         const onUserJoined = ({ userName }) => addToast(`${userName} joined`, 'success');
         const onUserLeft = ({ userName }) => addToast(`${userName} left`, 'warning');
-        const onChatMessage = (msg) => setMessages(prev => [...prev, msg]);
+
+        const onChatMessage = (msg) => {
+            setMessages(prev => [...prev, msg]);
+            if (!isChatOpenRef.current) {
+                setUnreadCount(prev => prev + 1);
+                // Show toast with name and message preview
+                const preview = msg.message.length > 30 ? msg.message.substring(0, 30) + '...' : msg.message;
+                addToast(`${msg.sender}: ${preview}`, 'chat');
+            }
+        };
 
         const onJoinRequest = ({ odId, userName, socketId }) => {
-
             setJoinRequests(prev => {
                 if (prev.some(r => r.socketId === socketId)) return prev;
                 return [...prev, { odId, userName, socketId }];
@@ -111,14 +128,12 @@ const MeetingRoom = () => {
     }, [connectionError, addToast]);
 
     const handleApprove = (socketId, userName) => {
-
         socket.emit('approve-join', { targetSocketId: socketId, roomId: meetingId });
         setJoinRequests(prev => prev.filter(r => r.socketId !== socketId));
         addToast(`${userName} admitted`, 'success');
     };
 
     const handleReject = (socketId, userName) => {
-
         socket.emit('reject-join', { targetSocketId: socketId, roomId: meetingId });
         setJoinRequests(prev => prev.filter(r => r.socketId !== socketId));
     };
@@ -144,15 +159,12 @@ const MeetingRoom = () => {
                 // HTTP fallback
                 const textArea = document.createElement("textarea");
                 textArea.value = meetingId;
-
                 textArea.style.position = "fixed";
                 textArea.style.left = "-9999px";
                 textArea.style.top = "0";
                 document.body.appendChild(textArea);
-
                 textArea.focus();
                 textArea.select();
-
                 try {
                     document.execCommand('copy');
                     addToast('Code copied!', 'success');
@@ -160,7 +172,6 @@ const MeetingRoom = () => {
                     console.error('Fallback copy failed', err);
                     addToast('Failed to copy', 'error');
                 }
-
                 document.body.removeChild(textArea);
             }
         } catch (err) {
@@ -168,8 +179,6 @@ const MeetingRoom = () => {
             addToast('Failed to copy code', 'error');
         }
     };
-
-
 
     if (waitingForApproval) {
         return (
@@ -231,7 +240,6 @@ const MeetingRoom = () => {
 
     return (
         <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
-
             <header className="bg-gray-800/80 border-b border-gray-700/50 px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
@@ -275,14 +283,12 @@ const MeetingRoom = () => {
                     <VideoGrid localStream={localStream} participants={participants} isVideoEnabled={isVideoEnabled} isAudioEnabled={isAudioEnabled} userName={user?.name} isScreenSharing={isScreenSharing} />
                 </div>
 
-
                 {showParticipants && (
                     <div className="absolute right-0 top-14 bottom-20 w-80 bg-gray-800 border-l border-gray-700 flex flex-col z-40">
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                             <h3 className="text-white font-semibold">People ({participantList.length})</h3>
                             <button onClick={() => setShowParticipants(false)} className="text-gray-400 hover:text-white">✕</button>
                         </div>
-
 
                         {isHost && (
                             <div className="p-4 bg-purple-500/10 border-b border-purple-500/30">
@@ -319,7 +325,6 @@ const MeetingRoom = () => {
                             </div>
                         )}
 
-
                         {isHost && joinRequests.length > 0 && (
                             <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/30">
                                 <h4 className="text-yellow-400 text-sm font-semibold mb-3">⏳ Waiting to join ({joinRequests.length})</h4>
@@ -339,7 +344,6 @@ const MeetingRoom = () => {
                                 ))}
                             </div>
                         )}
-
 
                         <div className="flex-1 overflow-y-auto p-4">
                             <h4 className="text-gray-400 text-sm mb-3">In this meeting</h4>
@@ -365,13 +369,18 @@ const MeetingRoom = () => {
                 isAudioEnabled={isAudioEnabled} isVideoEnabled={isVideoEnabled} isScreenSharing={isScreenSharing}
                 isChatOpen={isChatOpen} onToggleAudio={toggleAudio} onToggleVideo={toggleVideo}
                 onToggleScreenShare={isScreenSharing ? stopScreenShare : startScreenShare}
-                onToggleChat={() => { setIsChatOpen(!isChatOpen); setShowParticipants(false); }}
+                onToggleChat={() => {
+                    setIsChatOpen(!isChatOpen);
+                    setShowParticipants(false);
+                    if (!isChatOpen) setUnreadCount(0);
+                }}
                 onLeaveMeeting={handleLeaveMeeting}
                 permissions={permissions}
                 isHost={isHost}
+                unreadMessages={unreadCount}
             />
 
-            <div className="fixed top-20 right-4 z-50 space-y-2">
+            <div className="fixed bottom-24 right-4 z-50 space-y-2 pointer-events-none">
                 {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(x => x.id !== t.id))} />)}
             </div>
         </div>
