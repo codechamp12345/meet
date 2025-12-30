@@ -38,7 +38,7 @@ const MeetingRoom = () => {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
     }, []);
 
-    // Initialize meeting - runs once
+    // Initialize meeting
     useEffect(() => {
         if (!user || initRef.current) return;
         initRef.current = true;
@@ -52,8 +52,6 @@ const MeetingRoom = () => {
                 const hostId = String(meeting.host?._id || meeting.host);
                 const userId = String(user.id);
                 const userIsHost = hostId === userId;
-
-
 
                 setIsHost(userIsHost);
                 setLoading(false);
@@ -137,12 +135,41 @@ const MeetingRoom = () => {
         });
     };
 
-    const copyCode = () => {
-        navigator.clipboard.writeText(meetingId);
-        addToast('Code copied!', 'success');
+    const copyCode = async () => {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(meetingId);
+                addToast('Code copied!', 'success');
+            } else {
+                // Fallback for insecure contexts or browsesr
+                const textArea = document.createElement("textarea");
+                textArea.value = meetingId;
+
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    addToast('Code copied!', 'success');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                    addToast('Failed to copy', 'error');
+                }
+
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Copy failed', err);
+            addToast('Failed to copy code', 'error');
+        }
     };
 
-    // --- Render States ---
+    // Render States
 
     if (waitingForApproval) {
         return (
@@ -256,7 +283,7 @@ const MeetingRoom = () => {
                             <button onClick={() => setShowParticipants(false)} className="text-gray-400 hover:text-white">✕</button>
                         </div>
 
-                        {/* Join Requests (Host Only) */}
+                        {/* Join Requests*/}
                         {isHost && joinRequests.length > 0 && (
                             <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/30">
                                 <h4 className="text-yellow-400 text-sm font-semibold mb-3">⏳ Waiting to join ({joinRequests.length})</h4>

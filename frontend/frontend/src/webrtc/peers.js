@@ -178,25 +178,24 @@ export const replaceTrackInAllPeers = async (newTrack, kind) => {
     const promises = [];
 
     peerConnections.forEach((pc, peerId) => {
-        const senders = pc.getSenders();
-        const sender = senders.find(s => s.track && s.track.kind === kind);
+        let sender = pc.getSenders().find(s => s.track && s.track.kind === kind);
+
+        // If no sender with active track of this kind, look for a transceiver of this kind with empty sender
+        if (!sender) {
+            const transceivers = pc.getTransceivers();
+            const transceiver = transceivers.find(t =>
+                t.receiver.track.kind === kind && !t.sender.track
+            );
+            if (transceiver) {
+                sender = transceiver.sender;
+            }
+        }
 
         if (sender) {
             promises.push(
                 sender.replaceTrack(newTrack)
-
                     .catch(err => console.error(`Track replace failed for ${peerId}:`, err))
             );
-        } else {
-            // Try to find any sender that could accept this track
-            const emptySender = senders.find(s => !s.track);
-            if (emptySender) {
-                promises.push(
-                    emptySender.replaceTrack(newTrack)
-
-                        .catch(err => console.error(`Track add failed for ${peerId}:`, err))
-                );
-            }
         }
     });
 
