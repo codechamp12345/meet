@@ -30,21 +30,21 @@ export const createPeerConnection = (targetSocketId, localStream, isInitiator = 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnections.set(targetSocketId, pc);
 
-    // Add local tracks if available
+    // Add tracks
     if (localStream) {
         localStream.getTracks().forEach((track) => {
             pc.addTrack(track, localStream);
         });
     }
 
-    // Send ICE candidates to the other peer
+    // Send candidates
     pc.onicecandidate = (event) => {
         if (event.candidate) {
             socket.emit('ice-candidate', { targetSocketId, candidate: event.candidate });
         }
     };
 
-    // Track connection state
+    // Connection state
     pc.onconnectionstatechange = () => {
         if (onConnectionStateChangeCallback) {
             onConnectionStateChangeCallback(targetSocketId, pc.connectionState);
@@ -57,7 +57,7 @@ export const createPeerConnection = (targetSocketId, localStream, isInitiator = 
         }
     };
 
-    // Receive remote tracks - this handles screen share too
+    // Receive tracks
     pc.ontrack = (event) => {
         const [stream] = event.streams;
         if (stream) {
@@ -68,7 +68,7 @@ export const createPeerConnection = (targetSocketId, localStream, isInitiator = 
         }
     };
 
-    // Process any ICE candidates that arrived before the connection was ready
+    // Process queued candidates
     const pending = pendingCandidates.get(targetSocketId);
     if (pending) {
         pending.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => { }));
@@ -148,7 +148,7 @@ export const handleIceCandidate = async (senderSocketId, candidate) => {
 export const closePeerConnection = (socketId) => {
     const pc = peerConnections.get(socketId);
     if (pc) {
-        // CRITICAL: Remove listeners to prevent "closed" state event from re-adding participant
+        // Cleanup listeners
         pc.onconnectionstatechange = null;
         pc.onicecandidate = null;
         pc.ontrack = null;
@@ -173,14 +173,14 @@ export const closeAllPeerConnections = () => {
     pendingCandidates.clear();
 };
 
-// Replace track in all peer connections for screen share
+// Replace tracks
 export const replaceTrackInAllPeers = async (newTrack, kind) => {
     const promises = [];
 
     peerConnections.forEach((pc, peerId) => {
         let sender = pc.getSenders().find(s => s.track && s.track.kind === kind);
 
-        // If no sender with active track of this kind, look for a transceiver of this kind with empty sender
+        // Find empty sender
         if (!sender) {
             const transceivers = pc.getTransceivers();
             const transceiver = transceivers.find(t =>

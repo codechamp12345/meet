@@ -18,6 +18,7 @@ const useWebRTC = (roomId, userName, odId) => {
     const [waitingForApproval, setWaitingForApproval] = useState(false);
     const [wasRejected, setWasRejected] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [permissions, setPermissions] = useState({ mic: true, camera: true, screen: true });
 
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
@@ -25,7 +26,7 @@ const useWebRTC = (roomId, userName, odId) => {
 
     useEffect(() => { window.__userName = userName; }, [userName]);
 
-    // Get camera and microphone with optimized audio settings
+    // Get mic and camera
     const getLocalStream = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -34,14 +35,14 @@ const useWebRTC = (roomId, userName, odId) => {
                     echoCancellation: true, // Standard
                     noiseSuppression: true,
                     autoGainControl: true,
-                    googEchoCancellation: true, // Chrome-specific
+                    googEchoCancellation: true,
                     googAutoGainControl: true,
                     googNoiseSuppression: true,
                     googHighpassFilter: true,
                     sampleRate: 48000,
                     channelCount: 1,
                     latency: 0.01,
-                    suppressLocalAudioPlayback: true, // Prevents local loopback
+                    suppressLocalAudioPlayback: true,
                 },
             });
             localStreamRef.current = stream;
@@ -67,11 +68,10 @@ const useWebRTC = (roomId, userName, odId) => {
 
     const removeParticipant = useCallback((socketId) => {
 
-        // Explicitly close connection first to stop events
         closePeerConnection(socketId);
 
         setParticipants(prev => {
-            if (!prev.has(socketId)) return prev; // already removed
+            if (!prev.has(socketId)) return prev;
             const newMap = new Map(prev);
             newMap.delete(socketId);
             return newMap;
@@ -84,12 +84,11 @@ const useWebRTC = (roomId, userName, odId) => {
 
     const handleConnectionStateChange = useCallback((socketId, state) => {
         if (state === 'closed' || state === 'failed' || state === 'disconnected') {
-            // Ensure removal just in case
+
             removeParticipant(socketId);
             return;
         }
 
-        // Only update if participant exists to avoid ghosting
         setParticipants(prev => {
             if (!prev.has(socketId)) return prev;
             return new Map(prev).set(socketId, { ...prev.get(socketId), connectionState: state });
@@ -157,7 +156,7 @@ const useWebRTC = (roomId, userName, odId) => {
         }
     }, [roomId, isAudioEnabled]);
 
-    // Screen sharing with proper track replacement
+    // Handle screen sharing
     const startScreenShare = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -170,15 +169,15 @@ const useWebRTC = (roomId, userName, odId) => {
 
             const screenTrack = stream.getVideoTracks()[0];
 
-            // Replace video track in all peer connections
+            // Update peers
             await replaceTrackInAllPeers(screenTrack, 'video');
 
-            // Handle when user stops sharing via browser UI
+            // Browser stop button
             screenTrack.onended = () => stopScreenShare();
 
             socket.emit('screen-share-started', { roomId });
         } catch (error) {
-            // User cancelled screen share
+            // Cancelled
         }
     }, [roomId]);
 
@@ -187,7 +186,7 @@ const useWebRTC = (roomId, userName, odId) => {
         screenStreamRef.current = null;
         setScreenStream(null);
 
-        // Replace back with camera video
+        // Back to camera
         const videoTrack = localStreamRef.current?.getVideoTracks()[0];
         if (videoTrack) {
             replaceTrackInAllPeers(videoTrack, 'video');
@@ -197,13 +196,41 @@ const useWebRTC = (roomId, userName, odId) => {
         socket.emit('screen-share-stopped', { roomId });
     }, [roomId]);
 
+    // Check permissions
     useEffect(() => {
-        socket.on('room-joined', () => setIsConnected(true));
+        if (!permissions.mic && isAudioEnabled) {
+            const track = localStreamRef.current?.getAudioTracks()[0];
+            if (track) track.enabled = false;
+            setIsAudioEnabled(false);
+            socket.emit('media-state-change', { roomId, isAudioEnabled: false, isVideoEnabled });
+        }
+        if (!permissions.camera && isVideoEnabled) {
+            const track = localStreamRef.current?.getVideoTracks()[0];
+            if (track) track.enabled = false;
+            setIsVideoEnabled(false);
+            socket.emit('media-state-change', { roomId, isAudioEnabled, isVideoEnabled: false });
+        }
+        if (!permissions.screen && isScreenSharing) {
+            stopScreenShare();
+        }
+    }, [permissions, isAudioEnabled, isVideoEnabled, isScreenSharing, roomId, stopScreenShare]);
+
+    const updatePermissions = useCallback((newPermissions) => {
+        socket.emit('update-permissions', { roomId, permissions: newPermissions });
+    }, [roomId]);
+
+    useEffect(() => {
+        socket.on('room-joined', ({ permissions: initialPermissions }) => {
+            setIsConnected(true);
+            if (initialPermissions) setPermissions(initialPermissions);
+        });
         socket.on('waiting-for-approval', () => setWaitingForApproval(true));
 
-        socket.on('join-approved', ({ participants: existing }) => {
+        socket.on('join-approved', ({ participants: existing, permissions: initialPermissions }) => {
             setWaitingForApproval(false);
             setIsConnected(true);
+            if (initialPermissions) setPermissions(initialPermissions);
+
             existing?.forEach((p, i) => {
                 addParticipant(p.socketId, { ...p, connectionState: 'connecting', isVideoEnabled: true, isAudioEnabled: true });
                 createPeerConnection(p.socketId, localStreamRef.current, true);
@@ -220,6 +247,8 @@ const useWebRTC = (roomId, userName, odId) => {
         socket.on('user-left', ({ socketId }) => removeParticipant(socketId));
         socket.on('host-left', ({ message }) => setConnectionError(message));
 
+        socket.on('permissions-updated', (newPermissions) => setPermissions(newPermissions));
+
         socket.on('offer', async ({ offer, senderSocketId, senderName }) => {
             addParticipant(senderSocketId, { userName: senderName, connectionState: 'connecting' });
             await handleOffer(senderSocketId, offer, localStreamRef.current);
@@ -233,7 +262,7 @@ const useWebRTC = (roomId, userName, odId) => {
 
         return () => {
             ['room-joined', 'waiting-for-approval', 'join-approved', 'join-rejected', 'user-joined', 'user-left',
-                'host-left', 'offer', 'answer', 'ice-candidate', 'user-media-state-changed', 'user-screen-sharing', 'disconnect'
+                'host-left', 'permissions-updated', 'offer', 'answer', 'ice-candidate', 'user-media-state-changed', 'user-screen-sharing', 'disconnect'
             ].forEach(e => socket.off(e));
         };
     }, [addParticipant, removeParticipant]);
@@ -243,6 +272,7 @@ const useWebRTC = (roomId, userName, odId) => {
         screenStream, participants, isAudioEnabled, isVideoEnabled, isScreenSharing,
         isConnected, connectionError, waitingForApproval, wasRejected, rejectionReason,
         joinRoom, leaveRoom, toggleAudio, toggleVideo, startScreenShare, stopScreenShare,
+        permissions, updatePermissions
     };
 };
 

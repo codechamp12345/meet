@@ -9,18 +9,27 @@ const ControlBar = ({
     onToggleChat,
     onLeaveMeeting,
     unreadMessages = 0,
+    permissions = { mic: true, camera: true, screen: true },
+    isHost = false
 }) => {
+    // Check access
+    const isMicDisabled = !isHost && !permissions.mic;
+    const isCamDisabled = !isHost && !permissions.camera;
+    const isScreenDisabled = !isHost && !permissions.screen;
+
     return (
         <div className="bg-gray-800/80 backdrop-blur-sm border-t border-gray-700/50 px-4 py-4">
             <div className="flex items-center justify-center space-x-3 md:space-x-4">
-                {/* Mic Toggle */}
+
                 <button
-                    onClick={onToggleAudio}
-                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isAudioEnabled
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
+                    onClick={isMicDisabled ? null : onToggleAudio}
+                    disabled={isMicDisabled}
+                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isMicDisabled ? 'bg-gray-700 opacity-50 cursor-not-allowed' :
+                        isAudioEnabled
+                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                            : 'bg-red-500 hover:bg-red-600 text-white'
                         }`}
-                    title={isAudioEnabled ? 'Mute' : 'Unmute'}
+                    title={isMicDisabled ? 'Microphone disabled by host' : (isAudioEnabled ? 'Mute' : 'Unmute')}
                 >
                     {isAudioEnabled ? (
                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,14 +43,16 @@ const ControlBar = ({
                     )}
                 </button>
 
-                {/* Camera Toggle */}
+
                 <button
-                    onClick={onToggleVideo}
-                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isVideoEnabled
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
+                    onClick={isCamDisabled ? null : onToggleVideo}
+                    disabled={isCamDisabled}
+                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isCamDisabled ? 'bg-gray-700 opacity-50 cursor-not-allowed' :
+                        isVideoEnabled
+                            ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                            : 'bg-red-500 hover:bg-red-600 text-white'
                         }`}
-                    title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+                    title={isCamDisabled ? 'Camera disabled by host' : (isVideoEnabled ? 'Turn off camera' : 'Turn on camera')}
                 >
                     {isVideoEnabled ? (
                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,21 +66,23 @@ const ControlBar = ({
                     )}
                 </button>
 
-                {/* Screen Share Toggle */}
+
                 <button
-                    onClick={onToggleScreenShare}
-                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isScreenSharing
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    onClick={isScreenDisabled ? null : onToggleScreenShare}
+                    disabled={isScreenDisabled}
+                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isScreenDisabled ? 'bg-gray-700 opacity-50 cursor-not-allowed' :
+                        isScreenSharing
+                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                            : 'bg-gray-700 hover:bg-gray-600 text-white'
                         }`}
-                    title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+                    title={isScreenDisabled ? 'Screen sharing disabled by host' : (isScreenSharing ? 'Stop sharing' : 'Share screen')}
                 >
                     <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                 </button>
 
-                {/* Chat Toggle */}
+
                 <button
                     onClick={onToggleChat}
                     className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isChatOpen
@@ -82,7 +95,7 @@ const ControlBar = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
 
-                    {/* Unread Badge */}
+                    {/* Unread count */}
                     {unreadMessages > 0 && (
                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                             {unreadMessages > 9 ? '9+' : unreadMessages}
@@ -90,10 +103,10 @@ const ControlBar = ({
                     )}
                 </button>
 
-                {/* Divider */}
+
                 <div className="w-px h-8 bg-gray-600 mx-2 hidden md:block" />
 
-                {/* Leave Meeting */}
+
                 <button
                     onClick={onLeaveMeeting}
                     className="w-12 h-12 md:w-14 md:h-14 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg"

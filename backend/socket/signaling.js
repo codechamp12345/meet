@@ -26,13 +26,17 @@ function initializeSignaling(io) {
             const userInfo = { odId, userName, socketId: socket.id, isHost: true };
 
             if (!rooms.has(roomId)) {
-                rooms.set(roomId, new Map());
+                const roomUsers = new Map();
+                // Default permissions
+                roomUsers.permissions = { mic: true, camera: true, screen: true };
+                rooms.set(roomId, roomUsers);
             }
-            rooms.get(roomId).set(socket.id, userInfo);
+            const room = rooms.get(roomId);
+            room.set(socket.id, userInfo);
             socketToUser.set(socket.id, { roomId, odId, userName, isHost: true });
             roomHosts.set(roomId, socket.id);
 
-            socket.emit('room-joined', { isHost: true, participants: [] });
+            socket.emit('room-joined', { isHost: true, participants: [], permissions: room.permissions });
         });
 
         // GUEST requests to join
@@ -113,7 +117,7 @@ function initializeSignaling(io) {
                     }
                 });
 
-                io.to(targetSocketId).emit('join-approved', { roomId, participants });
+                io.to(targetSocketId).emit('join-approved', { roomId, participants, permissions: rooms.get(roomId).permissions });
 
                 targetSocket.to(roomId).emit('user-joined', {
                     socketId: targetSocketId,
@@ -206,6 +210,27 @@ function initializeSignaling(io) {
         // Leave room
         socket.on('leave-room', ({ roomId }) => {
             leaveRoom(socket, roomId, io);
+        });
+
+        // Permissions
+        socket.on('update-permissions', ({ roomId, permissions }) => {
+            const userInfo = socketToUser.get(socket.id);
+            if (!userInfo || !userInfo.isHost) {
+                // Security check: only host can update permissions
+                return;
+            }
+
+            if (rooms.has(roomId)) {
+                // Store permissions in room metadata
+                // We'll attach it to the room object. Note: rooms is Map<roomId, Map<socketId, user>>
+                // We need a separate store for room metadata or attach it to the Map itself
+                // For simplicity, we'll use a separate Map for room metadata if not exists, or just attach to the Map object
+                const room = rooms.get(roomId);
+                room.permissions = permissions;
+
+                // Broadcast to all in room including sender (to confirm state)
+                io.to(roomId).emit('permissions-updated', permissions);
+            }
         });
 
         // Disconnect

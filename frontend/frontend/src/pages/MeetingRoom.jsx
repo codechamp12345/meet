@@ -30,6 +30,7 @@ const MeetingRoom = () => {
         localStream, participants, isAudioEnabled, isVideoEnabled, isScreenSharing,
         isConnected, connectionError, waitingForApproval, wasRejected, rejectionReason,
         joinRoom, leaveRoom, toggleAudio, toggleVideo, startScreenShare, stopScreenShare,
+        permissions, updatePermissions
     } = useWebRTC(meetingId, user?.name, user?.id);
 
     const addToast = useCallback((message, type = 'info') => {
@@ -38,7 +39,7 @@ const MeetingRoom = () => {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
     }, []);
 
-    // Initialize meeting
+    // Setup meeting
     useEffect(() => {
         if (!user || initRef.current) return;
         initRef.current = true;
@@ -56,10 +57,9 @@ const MeetingRoom = () => {
                 setIsHost(userIsHost);
                 setLoading(false);
 
-                // Connect socket and join room
-                connectSocket();
 
-                // Small delay to ensure socket is ready
+
+                // Wait for socket
                 setTimeout(() => {
                     joinRoom(userIsHost);
                 }, 200);
@@ -78,7 +78,7 @@ const MeetingRoom = () => {
         };
     }, [meetingId, user?.id]);
 
-    // Socket events
+
     useEffect(() => {
         const onUserJoined = ({ userName }) => addToast(`${userName} joined`, 'success');
         const onUserLeft = ({ userName }) => addToast(`${userName} left`, 'warning');
@@ -141,7 +141,7 @@ const MeetingRoom = () => {
                 await navigator.clipboard.writeText(meetingId);
                 addToast('Code copied!', 'success');
             } else {
-                // Fallback for insecure contexts or browsesr
+                // HTTP fallback
                 const textArea = document.createElement("textarea");
                 textArea.value = meetingId;
 
@@ -169,7 +169,7 @@ const MeetingRoom = () => {
         }
     };
 
-    // Render States
+
 
     if (waitingForApproval) {
         return (
@@ -231,7 +231,7 @@ const MeetingRoom = () => {
 
     return (
         <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
-            {/* Header */}
+
             <header className="bg-gray-800/80 border-b border-gray-700/50 px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
@@ -275,7 +275,7 @@ const MeetingRoom = () => {
                     <VideoGrid localStream={localStream} participants={participants} isVideoEnabled={isVideoEnabled} isAudioEnabled={isAudioEnabled} userName={user?.name} isScreenSharing={isScreenSharing} />
                 </div>
 
-                {/* Participants Panel */}
+
                 {showParticipants && (
                     <div className="absolute right-0 top-14 bottom-20 w-80 bg-gray-800 border-l border-gray-700 flex flex-col z-40">
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
@@ -283,7 +283,43 @@ const MeetingRoom = () => {
                             <button onClick={() => setShowParticipants(false)} className="text-gray-400 hover:text-white">✕</button>
                         </div>
 
-                        {/* Join Requests*/}
+
+                        {isHost && (
+                            <div className="p-4 bg-purple-500/10 border-b border-purple-500/30">
+                                <h4 className="text-purple-400 text-sm font-semibold mb-3">Host Controls</h4>
+                                <div className="space-y-3">
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="text-gray-300 text-sm">Allow Microphone</span>
+                                        <input
+                                            type="checkbox"
+                                            checked={permissions.mic}
+                                            onChange={(e) => updatePermissions({ ...permissions, mic: e.target.checked })}
+                                            className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 bg-gray-700 border-gray-600"
+                                        />
+                                    </label>
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="text-gray-300 text-sm">Allow Camera</span>
+                                        <input
+                                            type="checkbox"
+                                            checked={permissions.camera}
+                                            onChange={(e) => updatePermissions({ ...permissions, camera: e.target.checked })}
+                                            className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 bg-gray-700 border-gray-600"
+                                        />
+                                    </label>
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="text-gray-300 text-sm">Allow Screen Share</span>
+                                        <input
+                                            type="checkbox"
+                                            checked={permissions.screen}
+                                            onChange={(e) => updatePermissions({ ...permissions, screen: e.target.checked })}
+                                            className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 bg-gray-700 border-gray-600"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
+
                         {isHost && joinRequests.length > 0 && (
                             <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/30">
                                 <h4 className="text-yellow-400 text-sm font-semibold mb-3">⏳ Waiting to join ({joinRequests.length})</h4>
@@ -304,7 +340,7 @@ const MeetingRoom = () => {
                             </div>
                         )}
 
-                        {/* In Meeting */}
+
                         <div className="flex-1 overflow-y-auto p-4">
                             <h4 className="text-gray-400 text-sm mb-3">In this meeting</h4>
                             {participantList.map((p, i) => (
@@ -331,6 +367,8 @@ const MeetingRoom = () => {
                 onToggleScreenShare={isScreenSharing ? stopScreenShare : startScreenShare}
                 onToggleChat={() => { setIsChatOpen(!isChatOpen); setShowParticipants(false); }}
                 onLeaveMeeting={handleLeaveMeeting}
+                permissions={permissions}
+                isHost={isHost}
             />
 
             <div className="fixed top-20 right-4 z-50 space-y-2">
