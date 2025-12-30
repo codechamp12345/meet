@@ -23,6 +23,7 @@ const useWebRTC = (roomId, userName, odId) => {
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
     const isJoinedRef = useRef(false);
+    const isHostRef = useRef(false);
 
     useEffect(() => { window.__userName = userName; }, [userName]);
 
@@ -98,6 +99,7 @@ const useWebRTC = (roomId, userName, odId) => {
     const joinRoom = useCallback(async (isHost) => {
         if (isJoinedRef.current) return;
         isJoinedRef.current = true;
+        isHostRef.current = !!isHost;
 
         await getLocalStream();
 
@@ -136,6 +138,7 @@ const useWebRTC = (roomId, userName, odId) => {
         setIsConnected(false);
         setWaitingForApproval(false);
         isJoinedRef.current = false;
+        isHostRef.current = false;
     }, [roomId]);
 
     const toggleAudio = useCallback(() => {
@@ -198,6 +201,8 @@ const useWebRTC = (roomId, userName, odId) => {
 
     // Check permissions
     useEffect(() => {
+        if (isHostRef.current) return;
+
         if (!permissions.mic && isAudioEnabled) {
             const track = localStreamRef.current?.getAudioTracks()[0];
             if (track) track.enabled = false;
