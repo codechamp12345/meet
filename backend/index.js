@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const path = require("path");
 
 dotenv.config();
 
@@ -27,17 +28,22 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get("/", (req, res) => {
+app.get("/health", (req, res) => {
   res.json({ status: "running", message: "SyncRoom API" });
 });
+
+// Serve static files from the React frontend app
+app.use(express.static(path.join(__dirname, "../frontend/frontend/dist")));
 
 // Routes
 app.use("/auth", authRoutes);
 app.use("/meeting", meetingRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
+
+
+// Anything that doesn't match the above, send back index.html
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/frontend/dist/index.html"));
 });
 
 // Error handler
