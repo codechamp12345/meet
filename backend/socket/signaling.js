@@ -6,6 +6,7 @@ const rooms = new Map();
 const socketToUser = new Map();
 const pendingRequests = new Map();
 const roomHosts = new Map();
+const admittedUsers = new Map(); // roomId -> Set of admitted odIds
 
 function initializeSignaling(io) {
     io.on('connection', (socket) => {
@@ -74,6 +75,13 @@ function initializeSignaling(io) {
             pendingRequests.get(roomId).set(socket.id, { odId, userName, socketId: socket.id });
             socketToUser.set(socket.id, { roomId, odId, userName, isHost: false, pending: true });
 
+            // AUTO-ADMIT if user was previously admitted
+            if (admittedUsers.has(roomId) && admittedUsers.get(roomId).has(odId)) {
+                console.log(`✨ Auto-admitting previously joined user: ${userName}`);
+                handleApproveJoin(socket.id, roomId, true); // true for autoAdmit
+                return;
+            }
+
             io.to(hostSocketId).emit('join-request', { odId, userName, socketId: socket.id });
             socket.emit('waiting-for-approval', { message: 'Waiting for host...' });
         });
@@ -82,6 +90,10 @@ function initializeSignaling(io) {
         socket.on('approve-join', ({ targetSocketId, roomId }) => {
             const userInfo = socketToUser.get(socket.id);
             if (!userInfo || !userInfo.isHost) return;
+            handleApproveJoin(targetSocketId, roomId);
+        });
+
+        function handleApproveJoin(targetSocketId, roomId, autoAdmit = false) {
 
             if (!pendingRequests.has(roomId)) return;
             const request = pendingRequests.get(roomId).get(targetSocketId);
@@ -95,6 +107,12 @@ function initializeSignaling(io) {
             }
 
             pendingRequests.get(roomId).delete(targetSocketId);
+
+            // Record admission for auto-join
+            if (!admittedUsers.has(roomId)) {
+                admittedUsers.set(roomId, new Set());
+            }
+            admittedUsers.get(roomId).add(request.odId);
 
             const joiner = { odId: request.odId, userName: request.userName, socketId: targetSocketId, isHost: false };
             rooms.get(roomId).set(targetSocketId, joiner);
@@ -133,7 +151,7 @@ function initializeSignaling(io) {
 
                 console.log(`✅ ${request.userName} joined. Users: ${rooms.get(roomId).size}`);
             }
-        });
+        }
 
         // Host rejects guest
         socket.on('reject-join', ({ targetSocketId, roomId }) => {
@@ -314,6 +332,7 @@ function initializeSignaling(io) {
                 rooms.delete(roomId);
                 pendingRequests.delete(roomId);
                 roomHosts.delete(roomId);
+                admittedUsers.delete(roomId);
             }
         }
 
