@@ -28,13 +28,17 @@ const useWebRTC = (roomId, userName, odId) => {
 
     useEffect(() => { window.__userName = userName; }, [userName]);
 
-    // Get mic and camera
+    // Get mic and camera separately so one can work if the other is blocked
     const getLocalStream = useCallback(async () => {
+        const stream = new MediaStream();
+        let hasAudio = false;
+        let hasVideo = false;
+
+        // Try to get audio separately
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            const audioStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    echoCancellation: true, // Standard
+                    echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
                     googEchoCancellation: true,
@@ -47,17 +51,30 @@ const useWebRTC = (roomId, userName, odId) => {
                     suppressLocalAudioPlayback: true,
                 },
             });
-            localStreamRef.current = stream;
-            setLocalStream(stream);
-            setIsAudioEnabled(true);
-            setIsVideoEnabled(true);
-            return stream;
-        } catch (error) {
-            localStreamRef.current = null;
-            setIsAudioEnabled(false);
-            setIsVideoEnabled(false);
-            return null;
+            audioStream.getAudioTracks().forEach(track => stream.addTrack(track));
+            hasAudio = true;
+        } catch (err) {
+            console.warn('Audio permission denied or unavailable:', err.message);
         }
+
+        // Try to get video separately
+        try {
+            const videoStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+            videoStream.getVideoTracks().forEach(track => stream.addTrack(track));
+            hasVideo = true;
+        } catch (err) {
+            console.warn('Video permission denied or unavailable:', err.message);
+        }
+
+        // Set states based on what we got
+        localStreamRef.current = stream;
+        setLocalStream(stream);
+        setIsAudioEnabled(hasAudio);
+        setIsVideoEnabled(hasVideo);
+
+        return stream;
     }, []);
 
     const addParticipant = useCallback((socketId, data) => {
