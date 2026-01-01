@@ -57,15 +57,26 @@ const useWebRTC = (roomId, userName, odId) => {
             console.warn('Audio permission denied or unavailable:', err.message);
         }
 
-        // Try to get video separately
-        try {
-            const videoStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-            });
-            videoStream.getVideoTracks().forEach(track => stream.addTrack(track));
-            hasVideo = true;
-        } catch (err) {
-            console.warn('Video permission denied or unavailable:', err.message);
+        // Try to get high quality video
+        const videoConstraints = [
+            // 1080p (Ideal)
+            { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 60 } },
+            // 720p (Fallback 1)
+            { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            // VGA (Fallback 2)
+            { width: { ideal: 640 }, height: { ideal: 480 } }
+        ];
+
+        for (const constraints of videoConstraints) {
+            try {
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+                videoStream.getVideoTracks().forEach(track => stream.addTrack(track));
+                console.log(`📹 Video started with resolution: ${track.getSettings().width}x${track.getSettings().height}`);
+                hasVideo = true;
+                break; // Success
+            } catch (err) {
+                console.warn(`Video constraint failed for ${constraints.width?.ideal}p:`, err.message);
+            }
         }
 
         // Set states based on what we got

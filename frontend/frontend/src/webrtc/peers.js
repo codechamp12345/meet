@@ -24,6 +24,30 @@ export const setCallbacks = (callbacks) => {
     onConnectionStateChangeCallback = callbacks.onConnectionStateChange;
 };
 
+const applyVideoBitrate = async (pc, bitrateKbps = 5000) => {
+    const senders = pc.getSenders();
+    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+
+    if (videoSender) {
+        try {
+            const parameters = videoSender.getParameters();
+            if (!parameters.encodings) {
+                parameters.encodings = [{}];
+            }
+            // Set max bitrate
+            parameters.encodings[0].maxBitrate = bitrateKbps * 1000;
+            // Also suggest high quality
+            parameters.encodings[0].priority = 'high';
+            parameters.encodings[0].networkPriority = 'high';
+
+            await videoSender.setParameters(parameters);
+            console.log(`🚀 Bitrate set to ${bitrateKbps}kbps for peer`);
+        } catch (err) {
+            console.warn('Could not set video parameters:', err.message);
+        }
+    }
+};
+
 export const createPeerConnection = (targetSocketId, localStream, isInitiator = false) => {
     if (peerConnections.has(targetSocketId)) {
         peerConnections.get(targetSocketId).close();
@@ -57,6 +81,8 @@ export const createPeerConnection = (targetSocketId, localStream, isInitiator = 
             if (stream && onRemoteStreamCallback) {
                 onRemoteStreamCallback(targetSocketId, stream);
             }
+            // Ensure bitrate is applied when connected
+            applyVideoBitrate(pc);
         }
     };
 
